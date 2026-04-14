@@ -13,7 +13,7 @@ const ProfilePage = () => {
 
   const handleSave = async () => {
     try {
-      await fetch('http://localhost:8080/api/users/1', {
+      await fetch('http://localhost:3001/api/users/1', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prefs),

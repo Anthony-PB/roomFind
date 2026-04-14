@@ -27,7 +27,7 @@ const BrowsePage = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/posts');
+        const res = await fetch('http://localhost:3001/api/posts');
         const data = await res.json();
         setPosts(data);
       } catch (err) {
