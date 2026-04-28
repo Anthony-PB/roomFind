@@ -1,61 +1,59 @@
 import { Router } from 'express';
+import { db } from '../firebase';
+
 const router = Router();
 
-const STUB_POSTS = [
-  {
-    id: '1',
-    authorId: 'u1',
-    authorName: 'Alice Chen',
-    location: 'Collegetown',
-    budget: 800,
-    moveInDate: '2025-08-01',
-    roomType: 'double',
-    noiseLevel: 2,
-    cleanlinessLevel: 4,
-    description: 'Looking for a quiet roommate near campus.',
-    createdAt: new Date().toISOString(),
-    matchScore: 85,
-  },
-  {
-    id: '2',
-    authorId: 'u2',
-    authorName: 'Bob Kim',
-    location: 'West Campus',
-    budget: 700,
-    moveInDate: '2025-08-15',
-    roomType: 'single',
-    noiseLevel: 4,
-    cleanlinessLevel: 3,
-    description: 'Social and easy-going, have a cat.',
-    createdAt: new Date().toISOString(),
-    matchScore: 62,
-  },
-];
-
 // GET /api/posts
-router.get('/', (req, res) => {
-  const sorted = [...STUB_POSTS].sort(
-    (a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)
-  );
-  res.status(200).json(sorted);
+router.get('/', async (req, res) => {
+  try {
+    const snapshot = await db.collection('posts').orderBy('matchScore', 'desc').get();
+    const posts = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(posts);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
 });
 
 // GET /api/posts/:id
-router.get('/:id', (req, res) => {
-  const post = STUB_POSTS.find((p) => p.id === req.params.id);
-  if (!post) return res.status(404).json({ error: 'Post not found' });
-  res.status(200).json(post);
+router.get('/:id', async (req, res) => {
+  try {
+    const doc = await db.collection('posts').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'Post not found' });
+    res.status(200).json({ id: doc.id, ...doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch post' });
+  }
 });
 
 // POST /api/posts
-router.post('/', (req, res) => {
-  const newPost = { ...req.body, id: String(Date.now()), createdAt: new Date().toISOString() };
-  res.status(201).json(newPost);
+router.post('/', async (req, res) => {
+  try {
+    const newPost = { ...req.body, createdAt: new Date().toISOString() };
+    const docRef = await db.collection('posts').add(newPost);
+    res.status(201).json({ id: docRef.id, ...newPost });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// PUT /api/posts/:id
+router.put('/:id', async (req, res) => {
+  try {
+    await db.collection('posts').doc(req.params.id).update(req.body);
+    res.status(200).json({ id: req.params.id, ...req.body });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update post' });
+  }
 });
 
 // DELETE /api/posts/:id
-router.delete('/:id', (req, res) => {
-  res.status(200).json({ message: `Post ${req.params.id} deleted (stub)` });
+router.delete('/:id', async (req, res) => {
+  try {
+    await db.collection('posts').doc(req.params.id).delete();
+    res.status(200).json({ message: 'Post deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
 });
 
 export default router;

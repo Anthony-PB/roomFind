@@ -14,7 +14,7 @@ const LoginPage = () => {
     setError('');
     try {
       const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(`http://localhost:8080${endpoint}`, {
+      const res = await fetch(`http://localhost:3001${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
