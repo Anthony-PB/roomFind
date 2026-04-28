@@ -1,66 +1,88 @@
 import { useState } from 'react';
-import type { LoginRequest } from '../types';
+import { Link, useNavigate } from 'react-router-dom';
+import { saveAuth } from '../auth';
 
-const LoginPage = () => {
-  const [form, setForm] = useState<LoginRequest>({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!form.email.endsWith('.edu')) {
-      setError('Please use a .edu email address.');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim()) {
+      setStatus({ type: 'error', msg: 'Please enter your email address.' });
       return;
     }
-    setError('');
+    if (!password) {
+      setStatus({ type: 'error', msg: 'Please enter your password.' });
+      return;
+    }
+
+    setLoading(true);
+    setStatus(null);
     try {
-      const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(`http://localhost:8080${endpoint}`, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      console.log('Response:', data);
-      // TODO: save token, redirect
-    } catch (err) {
-      setError('Something went wrong. Is the backend running?');
+      const data = await res.json() as { message: string; token: string; user: { id: string; name: string; email: string } };
+      if (res.ok) {
+        saveAuth(data.token, data.user);
+        setStatus({ type: 'success', msg: `Welcome back, ${data.user.name.split(' ')[0]}!` });
+        setTimeout(() => navigate('/browse'), 1000);
+      } else if (res.status === 401) {
+        setStatus({ type: 'error', msg: 'Incorrect email or password. Please try again.' });
+      } else {
+        setStatus({ type: 'error', msg: data.message ?? 'Login failed. Please try again.' });
+      }
+    } catch {
+      setStatus({ type: 'error', msg: 'Cannot connect to server. Make sure the backend is running.' });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '100px auto', padding: '2rem' }}>
-      <h1>🏠 Roommate Finder</h1>
-      <h2>{isRegistering ? 'Register' : 'Login'}</h2>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      <input
-        type="email"
-        placeholder="your@university.edu"
-        value={form.email}
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
-        style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={form.password}
-        onChange={(e) => setForm({ ...form, password: e.target.value })}
-        style={{ display: 'block', width: '100%', marginBottom: 16, padding: 8 }}
-      />
-
-      <button onClick={handleSubmit} style={{ width: '100%', padding: 10 }}>
-        {isRegistering ? 'Register' : 'Login'}
-      </button>
-
-      <p
-        style={{ cursor: 'pointer', color: 'blue', marginTop: 12 }}
-        onClick={() => setIsRegistering(!isRegistering)}
-      >
-        {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
-      </p>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>Welcome back</h1>
+        <p className="subtitle">Sign in to find your perfect roommate</p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>University Email</label>
+            <input
+              type="email"
+              placeholder="you@university.edu"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+        {status && (
+          <div className={`status-msg ${status.type}`}>{status.msg}</div>
+        )}
+        <div className="auth-footer">
+          Don't have an account? <Link to="/register">Create one</Link>
+        </div>
+      </div>
     </div>
   );
-};
-
-export default LoginPage;
+}

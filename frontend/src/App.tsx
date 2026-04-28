@@ -1,39 +1,28 @@
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import BrowsePage from './pages/BrowsePage';
 import ProfilePage from './pages/ProfilePage';
+import CreatePostPage from './pages/CreatePostPage';
+import './App.css';
 
-type Page = 'login' | 'browse' | 'profile';
-
-const App = () => {
-  const [page, setPage] = useState<Page>('login');
-
+function App() {
   return (
-    <div>
-      <nav style={{ background: '#333', padding: '10px 20px', display: 'flex', gap: 16 }}>
-        {(['login', 'browse', 'profile'] as Page[]).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPage(p)}
-            style={{
-              background: page === p ? '#4CAF50' : 'transparent',
-              color: 'white',
-              border: 'none',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              textTransform: 'capitalize',
-            }}
-          >
-            {p}
-          </button>
-        ))}
-      </nav>
-
-      {page === 'login' && <LoginPage />}
-      {page === 'browse' && <BrowsePage />}
-      {page === 'profile' && <ProfilePage />}
-    </div>
+    <BrowserRouter>
+      <Navbar />
+      <main className="main-content">
+        <Routes>
+          <Route path="/" element={<Navigate to="/browse" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/posts/new" element={<CreatePostPage />} />
+        </Routes>
+      </main>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;
