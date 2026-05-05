@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authHeaders, getUser } from '../auth';
 
 interface Preferences {
@@ -159,7 +159,11 @@ export default function ProfilePage() {
         </div>
 
         <div className="save-bar">
-          {saveStatus === 'saved' && <span style={{ color: '#276749', fontWeight: 600 }}>Preferences saved!</span>}
+          {saveStatus === 'saved' && (
+            <span style={{ color: '#276749', fontWeight: 600 }}>
+              Preferences saved! <Link to="/posts/new" style={{ color: '#276749' }}>Post a listing →</Link>
+            </span>
+          )}
           {saveStatus === 'error' && <span style={{ color: '#c53030', fontWeight: 600 }}>Failed to save — please try again.</span>}
           <button className="btn-save" onClick={handleSave} disabled={saveStatus === 'saving'}>
             {saveStatus === 'saving' ? 'Saving…' : 'Save Preferences'}

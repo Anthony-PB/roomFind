@@ -5,6 +5,10 @@ import RegisterPage from './pages/RegisterPage';
 import BrowsePage from './pages/BrowsePage';
 import ProfilePage from './pages/ProfilePage';
 import CreatePostPage from './pages/CreatePostPage';
+import UserProfilePage from './pages/UserProfilePage';
+import MessagesPage from './pages/MessagesPage';
+import RequestsPage from './pages/RequestsPage';
+import MapPage from './pages/MapPage';
 import './App.css';
 
 function App() {
@@ -19,6 +23,11 @@ function App() {
           <Route path="/browse" element={<BrowsePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/posts/new" element={<CreatePostPage />} />
+          <Route path="/users/:id" element={<UserProfilePage />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/messages/:userId" element={<MessagesPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
+          <Route path="/map" element={<MapPage />} />
         </Routes>
       </main>
     </BrowserRouter>
