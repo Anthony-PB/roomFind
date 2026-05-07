@@ -118,6 +118,9 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
     isSublet, availableFrom, availableTo,
   } = req.body as Record<string, string>;
 
+  const rawPhotos = (req.body as Record<string, unknown>)['photos'];
+  const photos = Array.isArray(rawPhotos) ? (rawPhotos as string[]).slice(0, 4) : [];
+
   if (!title || !location || !budget || !roomType || !moveInDate) {
     res.status(400).json({ message: 'title, location, budget, roomType, and moveInDate are required' });
     return;
@@ -141,6 +144,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
       isSublet: isSublet === 'true' || isSublet === true as unknown,
       availableFrom: availableFrom || '',
       availableTo: availableTo || '',
+      photos,
       createdAt: new Date().toISOString(),
     };
     if (lat && lng) {
@@ -175,7 +179,7 @@ router.put('/:id', requireAuth, async (req: AuthRequest, res) => {
       'title', 'location', 'budget', 'roomType', 'moveInDate',
       'noiseLevel', 'cleanLevel', 'description',
       'sleepSchedule', 'pets', 'lat', 'lng',
-      'isSublet', 'availableFrom', 'availableTo',
+      'isSublet', 'availableFrom', 'availableTo', 'photos',
     ];
     const numFields = new Set(['budget', 'noiseLevel', 'cleanLevel', 'lat', 'lng']);
     const updates: Record<string, unknown> = {};

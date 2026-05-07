@@ -20,12 +20,24 @@ interface Post {
   isSublet?: boolean;
   availableFrom?: string;
   availableTo?: string;
+  photos?: string[];
+}
+
+interface Lightbox {
+  photos: string[];
+  index: number;
 }
 
 const MOCK_POSTS: Post[] = [
   { id: 'mock-1', title: 'Looking for roommate near campus', location: '0.3 mi from main campus', budget: 800, roomType: 'Double', moveInDate: 'Aug 2026', noiseLevel: 3, cleanLevel: 4 },
   { id: 'mock-2', title: 'Quiet student seeks off-campus suite mate', location: '0.8 mi from campus', budget: 650, roomType: 'Suite', moveInDate: 'Sep 2026', noiseLevel: 1, cleanLevel: 5 },
   { id: 'mock-3', title: 'Apartment sublet available — summer only', location: '1.2 mi from campus', budget: 500, roomType: 'Studio', moveInDate: 'May 2026', noiseLevel: 2, cleanLevel: 3, isSublet: true },
+];
+
+const STACK_TRANSFORMS = [
+  '',
+  'rotate(3deg) translate(2px, 1px)',
+  'rotate(-5deg) translate(-4px, 3px)',
 ];
 
 export default function BrowsePage() {
@@ -39,7 +51,20 @@ export default function BrowsePage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [tab, setTab] = useState<'all' | 'saved'>('all');
+  const [lightbox, setLightbox] = useState<Lightbox | null>(null);
   const user = getUser();
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!lightbox) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setLightbox(l => l && { ...l, index: (l.index + 1) % l.photos.length });
+      if (e.key === 'ArrowLeft') setLightbox(l => l && { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length });
+      if (e.key === 'Escape') setLightbox(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightbox]);
 
   // Load bookmark IDs for logged-in users
   useEffect(() => {
@@ -198,82 +223,139 @@ export default function BrowsePage() {
                 hasActiveFilters ? 'No listings match your filters.' : 'No listings yet — be the first to post!'}
             </div>
           ) : (
-            posts.map(post => (
-              <div key={post.id} className="post-card">
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                    <h3 style={{ margin: 0, flex: 1 }}>{post.title}</h3>
-                    {post.isSublet && <span className="tag tag-sublet">Sublet</span>}
-                  </div>
-                  {post.authorName && (
-                    <div style={{ fontSize: '0.8rem', color: '#4a5568', marginBottom: '0.4rem' }}>
-                      by{' '}
-                      {post.authorId ? (
-                        <Link to={`/users/${post.authorId}`} style={{ color: '#2952d9', fontWeight: 600 }}>
-                          {post.authorName}
-                        </Link>
-                      ) : post.authorName}
+            posts.map(post => {
+              const stackPhotos = post.photos?.slice(0, 3) ?? [];
+              return (
+                <div key={post.id} className="post-card">
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                      <h3 style={{ margin: 0, flex: 1 }}>{post.title}</h3>
+                      {post.isSublet && <span className="tag tag-sublet">Sublet</span>}
                     </div>
-                  )}
-                  <div className="post-meta">
-                    <span>{post.location}</span>
-                    <span>${post.budget}/mo</span>
-                    <span>{post.moveInDate}</span>
-                  </div>
-                  <div className="post-meta" style={{ marginTop: '0.5rem' }}>
-                    <span className="tag">{post.roomType}</span>
-                    <span className="tag">Noise {post.noiseLevel}/5</span>
-                    <span className="tag">Clean {post.cleanLevel}/5</span>
-                    {post.sleepSchedule && <span className="tag">{post.sleepSchedule}</span>}
-                    {post.pets && post.pets !== 'no' && <span className="tag">Pets: {post.pets}</span>}
-                  </div>
-                  {post.isSublet && post.availableFrom && (
-                    <div className="post-meta" style={{ marginTop: '0.3rem' }}>
-                      <span>Available {post.availableFrom}{post.availableTo ? ` – ${post.availableTo}` : ''}</span>
+                    {post.authorName && (
+                      <div style={{ fontSize: '0.8rem', color: '#4a5568', marginBottom: '0.4rem' }}>
+                        by{' '}
+                        {post.authorId ? (
+                          <Link to={`/users/${post.authorId}`} style={{ color: '#2952d9', fontWeight: 600 }}>
+                            {post.authorName}
+                          </Link>
+                        ) : post.authorName}
+                      </div>
+                    )}
+                    <div className="post-meta">
+                      <span>{post.location}</span>
+                      <span>${post.budget}/mo</span>
+                      <span>{post.moveInDate}</span>
                     </div>
-                  )}
-                  {post.description && <p className="post-description">{post.description}</p>}
+                    <div className="post-meta" style={{ marginTop: '0.5rem' }}>
+                      <span className="tag">{post.roomType}</span>
+                      <span className="tag">Noise {post.noiseLevel}/5</span>
+                      <span className="tag">Clean {post.cleanLevel}/5</span>
+                      {post.sleepSchedule && <span className="tag">{post.sleepSchedule}</span>}
+                      {post.pets && post.pets !== 'no' && <span className="tag">Pets: {post.pets}</span>}
+                    </div>
+                    {post.isSublet && post.availableFrom && (
+                      <div className="post-meta" style={{ marginTop: '0.3rem' }}>
+                        <span>Available {post.availableFrom}{post.availableTo ? ` – ${post.availableTo}` : ''}</span>
+                      </div>
+                    )}
+                    {post.description && <p className="post-description">{post.description}</p>}
+                  </div>
+
+                  <div className="post-card-right">
+                    {post.matchScore !== undefined && (
+                      <div className="match-score">
+                        <div className="score">{post.matchScore}</div>
+                        <div className="label">match</div>
+                      </div>
+                    )}
+
+                    {/* Bookmark */}
+                    {user && (
+                      <button
+                        className={`btn-bookmark ${bookmarkedIds.has(post.id) ? 'saved' : ''}`}
+                        onClick={() => toggleBookmark(post.id)}
+                        disabled={togglingId === post.id}
+                        title={bookmarkedIds.has(post.id) ? 'Remove bookmark' : 'Save'}
+                      >
+                        {bookmarkedIds.has(post.id) ? '♥' : '♡'}
+                      </button>
+                    )}
+
+                    {/* Request button (not your own post) */}
+                    {user && post.authorId && post.authorId !== user.id && (
+                      <Link to={`/users/${post.authorId}`} className="btn-request">
+                        Request
+                      </Link>
+                    )}
+
+                    {/* Delete (own post) */}
+                    {user && post.authorId === user.id && (
+                      <button className="btn-delete" onClick={() => handleDelete(post.id)} disabled={deletingId === post.id}>
+                        {deletingId === post.id ? '…' : 'Delete'}
+                      </button>
+                    )}
+
+                    {/* Photo stack */}
+                    {stackPhotos.length > 0 && (
+                      <div
+                        className="photo-stack"
+                        onClick={() => setLightbox({ photos: post.photos!, index: 0 })}
+                        title={`${post.photos!.length} photo${post.photos!.length > 1 ? 's' : ''} — click to view`}
+                      >
+                        {stackPhotos.map((photo, i) => (
+                          <img
+                            key={i}
+                            src={photo}
+                            className="photo-stack-img"
+                            style={{
+                              transform: STACK_TRANSFORMS[i] ?? '',
+                              zIndex: stackPhotos.length - i,
+                            }}
+                            alt=""
+                          />
+                        ))}
+                        {post.photos!.length > 1 && (
+                          <span className="photo-stack-count">{post.photos!.length}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="post-card-right">
-                  {post.matchScore !== undefined && (
-                    <div className="match-score">
-                      <div className="score">{post.matchScore}</div>
-                      <div className="label">match</div>
-                    </div>
-                  )}
-
-                  {/* Bookmark */}
-                  {user && (
-                    <button
-                      className={`btn-bookmark ${bookmarkedIds.has(post.id) ? 'saved' : ''}`}
-                      onClick={() => toggleBookmark(post.id)}
-                      disabled={togglingId === post.id}
-                      title={bookmarkedIds.has(post.id) ? 'Remove bookmark' : 'Save'}
-                    >
-                      {bookmarkedIds.has(post.id) ? '♥' : '♡'}
-                    </button>
-                  )}
-
-                  {/* Request button (not your own post) */}
-                  {user && post.authorId && post.authorId !== user.id && (
-                    <Link to={`/users/${post.authorId}`} className="btn-request">
-                      Request
-                    </Link>
-                  )}
-
-                  {/* Delete (own post) */}
-                  {user && post.authorId === user.id && (
-                    <button className="btn-delete" onClick={() => handleDelete(post.id)} disabled={deletingId === post.id}>
-                      {deletingId === post.id ? '…' : 'Delete'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </section>
       </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+          <div className="lightbox" onClick={e => e.stopPropagation()}>
+            <button className="lightbox-close" onClick={() => setLightbox(null)}>&#10005;</button>
+            {lightbox.photos.length > 1 && (
+              <button
+                className="lightbox-nav lightbox-prev"
+                onClick={() => setLightbox(l => l && { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length })}
+              >
+                &#8249;
+              </button>
+            )}
+            <img src={lightbox.photos[lightbox.index]} className="lightbox-img" alt="" />
+            {lightbox.photos.length > 1 && (
+              <button
+                className="lightbox-nav lightbox-next"
+                onClick={() => setLightbox(l => l && { ...l, index: (l.index + 1) % l.photos.length })}
+              >
+                &#8250;
+              </button>
+            )}
+            {lightbox.photos.length > 1 && (
+              <div className="lightbox-counter">{lightbox.index + 1} / {lightbox.photos.length}</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

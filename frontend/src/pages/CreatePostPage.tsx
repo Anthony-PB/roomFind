@@ -1,9 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authHeaders, getToken } from '../auth';
 
+function compressImage(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      const MAX_W = 800, MAX_H = 600;
+      let w = img.width, h = img.height;
+      if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+      if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export default function CreatePostPage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: '',
     location: '',
@@ -20,9 +39,11 @@ export default function CreatePostPage() {
     availableTo: '',
     lat: '',
     lng: '',
+    photos: [] as string[],
   });
   const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
 
   useEffect(() => { if (!getToken()) navigate('/login'); }, []);
 
@@ -33,6 +54,25 @@ export default function CreatePostPage() {
   const setNum = (field: string) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm(f => ({ ...f, [field]: Number(e.target.value) }));
+
+  const handlePhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const remaining = 4 - form.photos.length;
+    if (remaining <= 0) return;
+    setCompressing(true);
+    try {
+      const compressed = await Promise.all(files.slice(0, remaining).map(compressImage));
+      setForm(f => ({ ...f, photos: [...f.photos, ...compressed] }));
+    } finally {
+      setCompressing(false);
+      e.target.value = '';
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== index) }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +180,39 @@ export default function CreatePostPage() {
             )}
           </div>
 
+          {/* Photos */}
+          <div className="form-section">
+            <h2>Photos <span style={{ fontWeight: 400, fontSize: '0.85rem', color: '#4a5568' }}>(optional, up to 4)</span></h2>
+            {form.photos.length < 4 && (
+              <div
+                className={`photo-upload-area${compressing ? ' photo-upload-area--busy' : ''}`}
+                onClick={() => !compressing && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handlePhotoAdd}
+                />
+                <span style={{ fontSize: '1.5rem' }}>&#128247;</span>
+                <span style={{ fontWeight: 600 }}>{compressing ? 'Compressing…' : 'Click to add photos'}</span>
+                <span style={{ fontSize: '0.8rem', color: '#718096' }}>JPG, PNG, WEBP — auto-compressed</span>
+              </div>
+            )}
+            {form.photos.length > 0 && (
+              <div className="photo-preview-grid">
+                {form.photos.map((photo, i) => (
+                  <div key={i} className="photo-preview-item">
+                    <img src={photo} alt="" />
+                    <button type="button" className="photo-preview-remove" onClick={() => removePhoto(i)}>&#10005;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Living Style */}
           <div className="form-section">
             <h2>Your Living Style</h2>
@@ -217,7 +290,7 @@ export default function CreatePostPage() {
 
           <div className="form-actions">
             <Link to="/browse" className="btn-cancel">Cancel</Link>
-            <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} disabled={loading}>
+            <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} disabled={loading || compressing}>
               {loading ? 'Posting…' : 'Post Listing'}
             </button>
           </div>
