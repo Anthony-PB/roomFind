@@ -1,19 +1,23 @@
 # RoomFind
 
-A roommate-finding web application for college students. Users create listings, set lifestyle preferences, get match scores against other listings, message potential roommates, and view available housing on an interactive map.
+A roommate-finding web application for Cornell students. Users create listings, set lifestyle preferences, get match scores against other listings, message potential roommates, and view available housing on an interactive map centered on Ithaca, NY.
+
+**Live app:** [https://your-app.vercel.app](https://your-app.vercel.app)
 
 ---
 
 ## Features
 
 - **Match Scoring** — Server computes a 0–100 compatibility score per listing based on noise tolerance, cleanliness, and sleep schedule. Browse is sorted by score when logged in.
-- **Listings** — Post a room or sublet with budget, room type, move-in date, living style, and optional map coordinates.
-- **Filters & Sort** — Filter by max budget and room type; sort by match score, budget, or date.
+- **Listings** — Post a room or sublet with budget, room type, move-in date, living style, and address autocomplete (Nominatim/OpenStreetMap).
+- **Filters, Sort & Search** — Filter by max budget, room type, and sublet; sort by match score, budget, or date; full-text search across titles and descriptions.
 - **Bookmarks** — Save listings to a personal "Saved" tab.
-- **Roommate Requests** — Send a request to a poster, accept or decline incoming requests.
-- **Direct Messages** — Real-time-style chat with any user (polls every 4 s).
-- **Map View** — OpenStreetMap/Leaflet map showing pins for listings that include coordinates.
-- **User Profiles** — View another user's lifestyle preferences and listings; send a message or request from their profile.
+- **Roommate Requests** — Send a request directly from a listing card, accept or decline incoming requests, dismiss old ones.
+- **Direct Messages** — Chat with any user (polls every 4 s).
+- **Map View** — OpenStreetMap/Leaflet map with pin filtering, sidebar bookmarks, and highlight-from-browse linking.
+- **User Profiles** — View lifestyle preferences, listings, and social links (Instagram, LinkedIn).
+- **Notifications** — Bell icon in the navbar shows pending requests and accepted requests.
+- **My Listings** — Dedicated tab to manage, edit, and delete your own posts.
 - **Sublet Support** — Mark a listing as a sublet with an availability date range.
 - **.edu Restriction** — Registration requires a university `.edu` email address.
 
@@ -25,10 +29,11 @@ A roommate-finding web application for college students. Users create listings, 
 roomFind/
 ├── frontend/          # React + TypeScript + Vite
 │   └── src/
-│       ├── pages/     # BrowsePage, CreatePostPage, ProfilePage,
+│       ├── pages/     # BrowsePage, CreatePostPage, EditPostPage, ProfilePage,
 │       │              # UserProfilePage, MessagesPage, RequestsPage, MapPage,
 │       │              # LoginPage, RegisterPage
 │       ├── components/# Navbar
+│       ├── api.ts     # apiFetch wrapper (uses VITE_API_URL in production)
 │       └── auth.ts    # JWT helpers (localStorage)
 └── server/            # Node + Express + TypeScript + Firestore
     └── src/
@@ -39,59 +44,18 @@ roomFind/
 
 ---
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- A Firebase project with Firestore enabled
-- A service account key JSON from Firebase Console
-
-### 1. Server setup
-
-```bash
-cd server
-npm install
-```
-
-Create `server/.env`:
-
-```
-PORT=3001
-JWT_SECRET=your_secret_here
-GOOGLE_APPLICATION_CREDENTIALS=path/to/serviceAccountKey.json
-```
-
-Start the server:
-
-```bash
-npm run dev
-```
-
-### 2. Frontend setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend runs on `http://localhost:5173` and proxies `/api/*` to `http://localhost:3001`.
-
----
-
 ## API Reference
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | POST | `/api/auth/register` | — | Register (`.edu` email required) |
 | POST | `/api/auth/login` | — | Login, returns JWT |
-| GET | `/api/posts` | optional | List posts; computes match score if authenticated. Query: `budget`, `roomType`, `sort` |
+| GET | `/api/posts` | optional | List posts; computes match score if authenticated. Query: `budget`, `roomType`, `isSublet`, `sort` |
 | POST | `/api/posts` | ✓ | Create a listing |
 | PUT | `/api/posts/:id` | ✓ | Update own listing |
 | DELETE | `/api/posts/:id` | ✓ | Delete own listing |
 | GET | `/api/users/me` | ✓ | Get own profile + preferences |
-| PUT | `/api/users/me` | ✓ | Save preferences |
+| PUT | `/api/users/me` | ✓ | Save preferences, instagram, linkedin |
 | DELETE | `/api/users/me` | ✓ | Delete account (cascades posts) |
 | GET | `/api/users/:id` | ✓ | Get another user's profile |
 | GET | `/api/bookmarks` | ✓ | List bookmarked posts |
@@ -101,6 +65,7 @@ The frontend runs on `http://localhost:5173` and proxies `/api/*` to `http://loc
 | GET | `/api/requests` | ✓ | Get sent + received requests |
 | POST | `/api/requests` | ✓ | Send a roommate request |
 | PATCH | `/api/requests/:id` | ✓ | Accept or decline a request |
+| DELETE | `/api/requests/:id` | ✓ | Dismiss or cancel a request |
 | GET | `/api/messages` | ✓ | List conversations |
 | GET | `/api/messages/:userId` | ✓ | Get thread with a user |
 | POST | `/api/messages/:userId` | ✓ | Send a message |
