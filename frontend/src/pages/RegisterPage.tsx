@@ -23,8 +23,10 @@ export default function RegisterPage() {
       setStatus({ type: 'error', msg: 'Please enter your university email.' });
       return;
     }
-    if (!form.email.endsWith('.edu')) {
-      setStatus({ type: 'error', msg: 'You must use a .edu university email to register.' });
+    const emailDomain = form.email.toLowerCase().split('@')[1] ?? '';
+    const validDomain = emailDomain === 'cornell.edu' || emailDomain.endsWith('.cornell.edu');
+    if (!validDomain) {
+      setStatus({ type: 'error', msg: 'Please use a Cornell email address (@cornell.edu).' });
       return;
     }
     if (form.password.length < 8) {
@@ -65,15 +67,15 @@ export default function RegisterPage() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>Create account</h1>
-        <p className="subtitle">Join RoomFind with your university email</p>
+        <p className="subtitle">Join RoomFind with your Cornell email</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Full Name</label>
             <input type="text" placeholder="Jane Smith" value={form.name} onChange={set('name')} autoComplete="name" />
           </div>
           <div className="form-group">
-            <label>University Email (.edu)</label>
-            <input type="email" placeholder="you@university.edu" value={form.email} onChange={set('email')} autoComplete="email" />
+            <label>Cornell Email</label>
+            <input type="email" placeholder="you@cornell.edu" value={form.email} onChange={set('email')} autoComplete="email" />
           </div>
           <div className="form-group">
             <label>Password <span style={{ color: '#a0aec0', fontWeight: 400 }}>(min. 8 characters)</span></label>

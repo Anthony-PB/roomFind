@@ -13,8 +13,11 @@ router.post('/register', async (req, res) => {
     res.status(400).json({ message: 'Name, email, and password are required' });
     return;
   }
-  if (!email.endsWith('.edu')) {
-    res.status(400).json({ message: 'Please use a .edu university email' });
+  const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN || 'cornell.edu';
+  const emailDomain = email.toLowerCase().split('@')[1] ?? '';
+  const validDomain = emailDomain === allowedDomain || emailDomain.endsWith(`.${allowedDomain}`);
+  if (!validDomain) {
+    res.status(400).json({ message: `Please use a @${allowedDomain} email address` });
     return;
   }
 
