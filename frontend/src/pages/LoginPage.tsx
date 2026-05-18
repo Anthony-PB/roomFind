@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { saveAuth } from '../auth';
+import { apiFetch } from '../api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

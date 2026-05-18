@@ -100,4 +100,26 @@ router.patch('/:id', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// DELETE /api/requests/:id — dismiss/cancel a request
+router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const ref = db.collection('requests').doc(req.params['id'] as string);
+    const doc = await ref.get();
+    if (!doc.exists) {
+      res.status(404).json({ message: 'Request not found' });
+      return;
+    }
+    const data = doc.data() as { fromUserId: string; toUserId: string };
+    if (data['fromUserId'] !== req.user!.id && data['toUserId'] !== req.user!.id) {
+      res.status(403).json({ message: 'Forbidden' });
+      return;
+    }
+    await ref.delete();
+    res.json({ message: 'Request dismissed' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ message: `Server error: ${msg}` });
+  }
+});
+
 export default router;

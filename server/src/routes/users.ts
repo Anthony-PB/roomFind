@@ -30,13 +30,21 @@ router.put('/:id', requireAuth, async (req: AuthRequest, res) => {
       res.status(403).json({ message: 'Forbidden' });
       return;
     }
-    const { preferences } = req.body as { preferences: unknown };
-    if (!preferences) {
-      res.status(400).json({ message: 'preferences field is required' });
+    const { preferences, instagram, linkedin } = req.body as {
+      preferences?: unknown;
+      instagram?: string;
+      linkedin?: string;
+    };
+    const updates: Record<string, unknown> = {};
+    if (preferences !== undefined) updates['preferences'] = preferences;
+    if (instagram !== undefined) updates['instagram'] = instagram.trim().replace(/^@/, '');
+    if (linkedin !== undefined) updates['linkedin'] = linkedin.trim().replace(/^@/, '');
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ message: 'Nothing to update' });
       return;
     }
-    await db.collection('users').doc(id).update({ preferences });
-    res.json({ message: 'Preferences saved' });
+    await db.collection('users').doc(id).update(updates);
+    res.json({ message: 'Profile saved' });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ message: `Server error: ${msg}` });

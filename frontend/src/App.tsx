@@ -9,6 +9,7 @@ import UserProfilePage from './pages/UserProfilePage';
 import MessagesPage from './pages/MessagesPage';
 import RequestsPage from './pages/RequestsPage';
 import MapPage from './pages/MapPage';
+import EditPostPage from './pages/EditPostPage';
 import './App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/browse" element={<BrowsePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/posts/new" element={<CreatePostPage />} />
+          <Route path="/posts/:id/edit" element={<EditPostPage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/messages/:userId" element={<MessagesPage />} />

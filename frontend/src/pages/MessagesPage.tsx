@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getUser, authHeaders } from '../auth';
+import { apiFetch } from '../api';
 
 interface Conversation {
   userId: string;
@@ -47,14 +48,14 @@ export default function MessagesPage() {
   }, [messages]);
 
   const loadConversations = () => {
-    fetch('/api/messages', { headers: authHeaders() })
+    apiFetch('/api/messages', { headers: authHeaders() })
       .then(r => r.json())
       .then((data: { conversations: Conversation[] }) => setConversations(data.conversations ?? []))
       .catch(() => {});
   };
 
   const loadMessages = () => {
-    fetch(`/api/messages/${chatUserId}`, { headers: authHeaders() })
+    apiFetch(`/api/messages/${chatUserId}`, { headers: authHeaders() })
       .then(r => r.json())
       .then((data: { messages: Message[]; otherName: string }) => {
         setMessages(data.messages ?? []);
@@ -69,7 +70,7 @@ export default function MessagesPage() {
     if (!text.trim() || !chatUserId) return;
     setSending(true);
     try {
-      await fetch(`/api/messages/${chatUserId}`, {
+      await apiFetch(`/api/messages/${chatUserId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ text }),

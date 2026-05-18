@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getUser, authHeaders } from '../auth';
+import { apiFetch } from '../api';
 
 interface RoommateRequest {
   id: string;
@@ -23,10 +24,11 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'received' | 'sent'>('received');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [dismissing, setDismissing] = useState<string | null>(null);
 
   useEffect(() => {
     if (!me) { navigate('/login'); return; }
-    fetch('/api/requests', { headers: authHeaders() })
+    apiFetch('/api/requests', { headers: authHeaders() })
       .then(r => r.json())
       .then((data: { sent: RoommateRequest[]; received: RoommateRequest[] }) => {
         setSent(data.sent ?? []);
@@ -36,10 +38,23 @@ export default function RequestsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const dismiss = async (id: string, isSent: boolean) => {
+    setDismissing(id);
+    try {
+      const res = await apiFetch(`/api/requests/${id}`, { method: 'DELETE', headers: authHeaders() });
+      if (res.ok) {
+        if (isSent) setSent(r => r.filter(req => req.id !== id));
+        else setReceived(r => r.filter(req => req.id !== id));
+      }
+    } finally {
+      setDismissing(null);
+    }
+  };
+
   const respond = async (id: string, status: 'accepted' | 'declined') => {
     setUpdating(id);
     try {
-      const res = await fetch(`/api/requests/${id}`, {
+      const res = await apiFetch(`/api/requests/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ status }),
@@ -84,32 +99,45 @@ export default function RequestsPage() {
               <div key={req.id} className="req-card">
                 <div className="req-card-top">
                   <Link to={`/users/${req.fromUserId}`} className="req-name">{req.fromUserName}</Link>
-                  <span className={`status-badge status-${req.status}`}>{req.status}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className={`status-badge status-${req.status}`}>{req.status}</span>
+                    {req.status !== 'pending' && (
+                      <button
+                        onClick={() => dismiss(req.id, false)}
+                        disabled={dismissing === req.id}
+                        title="Dismiss"
+                        style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#4a5568')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#a0aec0')}
+                      >
+                        &#10005;
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="req-listing">Re: <em>{req.postTitle}</em></p>
                 {req.message && <p className="req-message">"{req.message}"</p>}
                 <p className="req-date">{new Date(req.createdAt).toLocaleDateString()}</p>
-                {req.status === 'pending' && (
-                  <div className="req-actions">
-                    <button
-                      className="btn-accept"
-                      disabled={updating === req.id}
-                      onClick={() => respond(req.id, 'accepted')}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      className="btn-decline"
-                      disabled={updating === req.id}
-                      onClick={() => respond(req.id, 'declined')}
-                    >
-                      Decline
-                    </button>
-                    <Link to={`/messages/${req.fromUserId}`} className="btn-msg-link">
-                      Message
+                <div className="req-actions">
+                  {req.status === 'pending' && (
+                    <>
+                      <button className="btn-accept" disabled={updating === req.id} onClick={() => respond(req.id, 'accepted')}>
+                        Accept
+                      </button>
+                      <button className="btn-decline" disabled={updating === req.id} onClick={() => respond(req.id, 'declined')}>
+                        Decline
+                      </button>
+                    </>
+                  )}
+                  {req.status === 'accepted' && (
+                    <Link to={`/messages/${req.fromUserId}`} className="btn-accept" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                      Message them →
                     </Link>
-                  </div>
-                )}
+                  )}
+                  <Link to={`/messages/${req.fromUserId}`} className="btn-msg-link">
+                    {req.status === 'pending' ? 'Message' : req.status === 'declined' ? 'Message anyway' : ''}
+                  </Link>
+                </div>
               </div>
             ))
           )}
@@ -125,7 +153,19 @@ export default function RequestsPage() {
               <div key={req.id} className="req-card">
                 <div className="req-card-top">
                   <Link to={`/users/${req.toUserId}`} className="req-name">To: {req.toUserName}</Link>
-                  <span className={`status-badge status-${req.status}`}>{req.status}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className={`status-badge status-${req.status}`}>{req.status}</span>
+                    <button
+                      onClick={() => dismiss(req.id, true)}
+                      disabled={dismissing === req.id}
+                      title={req.status === 'pending' ? 'Cancel request' : 'Dismiss'}
+                      style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#4a5568')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#a0aec0')}
+                    >
+                      &#10005;
+                    </button>
+                  </div>
                 </div>
                 <p className="req-listing">Re: <em>{req.postTitle}</em></p>
                 {req.message && <p className="req-message">"{req.message}"</p>}

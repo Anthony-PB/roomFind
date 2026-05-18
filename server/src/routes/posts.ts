@@ -57,10 +57,11 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const { budget, roomType, sort } = req.query as {
+    const { budget, roomType, sort, isSublet } = req.query as {
       budget?: string;
       roomType?: string;
       sort?: string;
+      isSublet?: string;
     };
 
     const snap = await db.collection('posts').orderBy('createdAt', 'desc').get();
@@ -68,6 +69,7 @@ router.get('/', async (req, res) => {
 
     if (budget) posts = posts.filter(p => (p['budget'] as number) <= Number(budget));
     if (roomType) posts = posts.filter(p => p['roomType'] === roomType);
+    if (isSublet === 'true') posts = posts.filter(p => p['isSublet'] === true);
 
     // Attach match score if user has preferences
     if (userPrefs) {

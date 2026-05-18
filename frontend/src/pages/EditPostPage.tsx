@@ -1,7 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { authHeaders, getToken } from '../auth';
 import { apiFetch } from '../api';
+
+function compressImage(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      const MAX_W = 800, MAX_H = 600;
+      let w = img.width, h = img.height;
+      if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+      if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 interface NominatimResult {
   place_id: number;
@@ -32,27 +50,12 @@ function trimAddress(displayName: string): string {
   return [cleaned[0], cleaned[1], stateAbbr].filter(Boolean).join(', ');
 }
 
-function compressImage(file: File): Promise<string> {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(img.src);
-      const MAX_W = 800, MAX_H = 600;
-      let w = img.width, h = img.height;
-      if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
-      if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.72));
-    };
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-export default function CreatePostPage() {
+export default function EditPostPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loadingPost, setLoadingPost] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState({
     title: '',
     location: '',
@@ -78,6 +81,36 @@ export default function CreatePostPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!getToken()) { navigate('/login'); return; }
+    apiFetch(`/api/posts/${id}`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then((data: { post: Record<string, unknown> }) => {
+        const p = data.post;
+        if (!p) { setNotFound(true); return; }
+        setForm({
+          title: String(p['title'] ?? ''),
+          location: String(p['location'] ?? ''),
+          budget: String(p['budget'] ?? ''),
+          roomType: String(p['roomType'] ?? 'Double'),
+          moveInDate: String(p['moveInDate'] ?? ''),
+          noiseLevel: Number(p['noiseLevel'] ?? 3),
+          cleanLevel: Number(p['cleanLevel'] ?? 3),
+          sleepSchedule: String(p['sleepSchedule'] ?? ''),
+          pets: String(p['pets'] ?? ''),
+          description: String(p['description'] ?? ''),
+          isSublet: Boolean(p['isSublet']),
+          availableFrom: String(p['availableFrom'] ?? ''),
+          availableTo: String(p['availableTo'] ?? ''),
+          lat: p['lat'] !== undefined ? String(p['lat']) : '',
+          lng: p['lng'] !== undefined ? String(p['lng']) : '',
+          photos: Array.isArray(p['photos']) ? (p['photos'] as string[]) : [],
+        });
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoadingPost(false));
+  }, [id]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -110,8 +143,6 @@ export default function CreatePostPage() {
     setSuggestions([]);
     setShowSuggestions(false);
   };
-
-  useEffect(() => { if (!getToken()) navigate('/login'); }, []);
 
   const setStr = (field: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -153,23 +184,25 @@ export default function CreatePostPage() {
       const body: Record<string, unknown> = {
         ...form,
         budget: Number(form.budget),
-        isSublet: String(form.isSublet),
+        isSublet: form.isSublet,
       };
       if (!form.lat || !form.lng) { delete body['lat']; delete body['lng']; }
 
-      const res = await apiFetch('/api/posts', {
-        method: 'POST',
+      const res = await apiFetch(`/api/posts/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(body),
       });
       const data = await res.json() as { message: string };
       if (res.ok) {
-        navigate('/browse');
+        navigate('/browse?tab=mine');
       } else if (res.status === 401) {
         setStatus({ type: 'error', msg: 'Session expired. Redirecting to login…' });
         setTimeout(() => navigate('/login'), 1500);
+      } else if (res.status === 403) {
+        setStatus({ type: 'error', msg: 'You can only edit your own listings.' });
       } else {
-        setStatus({ type: 'error', msg: data.message ?? 'Failed to create listing.' });
+        setStatus({ type: 'error', msg: data.message ?? 'Failed to update listing.' });
       }
     } catch {
       setStatus({ type: 'error', msg: 'Cannot connect to server. Make sure the backend is running.' });
@@ -178,11 +211,14 @@ export default function CreatePostPage() {
     }
   };
 
+  if (loadingPost) return <div className="loading" style={{ padding: '3rem' }}>Loading listing…</div>;
+  if (notFound) return <div className="loading" style={{ padding: '3rem' }}>Listing not found.</div>;
+
   return (
     <div className="create-post-page">
       <div className="page-header">
-        <h1>Post a Listing</h1>
-        <p className="subtitle">Let other students find you as a roommate</p>
+        <h1>Edit Listing</h1>
+        <p className="subtitle">Update your listing details</p>
       </div>
 
       <div className="form-card">
@@ -222,10 +258,7 @@ export default function CreatePostPage() {
                       <li
                         key={s.place_id}
                         onMouseDown={() => handleSuggestionSelect(s)}
-                        style={{
-                          padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
-                          borderBottom: '1px solid #eef0f4',
-                        }}
+                        style={{ padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', borderBottom: '1px solid #eef0f4' }}
                         onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
                         onMouseLeave={e => (e.currentTarget.style.background = '')}
                       >
@@ -256,7 +289,6 @@ export default function CreatePostPage() {
               </div>
             </div>
 
-            {/* Sublet toggle */}
             <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <input
                 type="checkbox"
@@ -289,14 +321,7 @@ export default function CreatePostPage() {
                 className={`photo-upload-area${compressing ? ' photo-upload-area--busy' : ''}`}
                 onClick={() => !compressing && fileInputRef.current?.click()}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={handlePhotoAdd}
-                />
+                <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoAdd} />
                 <span style={{ fontSize: '1.5rem' }}>&#128247;</span>
                 <span style={{ fontWeight: 600 }}>{compressing ? 'Compressing…' : 'Click to add photos'}</span>
                 <span style={{ fontSize: '0.8rem', color: '#718096' }}>JPG, PNG, WEBP — auto-compressed</span>
@@ -338,17 +363,11 @@ export default function CreatePostPage() {
               </div>
             </div>
             <div className="slider-group">
-              <label>
-                <span>Noise Level</span>
-                <span>{form.noiseLevel} / 5</span>
-              </label>
+              <label><span>Noise Level</span><span>{form.noiseLevel} / 5</span></label>
               <input type="range" min={1} max={5} value={form.noiseLevel} onChange={setNum('noiseLevel')} />
             </div>
             <div className="slider-group">
-              <label>
-                <span>Cleanliness</span>
-                <span>{form.cleanLevel} / 5</span>
-              </label>
+              <label><span>Cleanliness</span><span>{form.cleanLevel} / 5</span></label>
               <input type="range" min={1} max={5} value={form.cleanLevel} onChange={setNum('cleanLevel')} />
             </div>
           </div>
@@ -367,12 +386,12 @@ export default function CreatePostPage() {
             </div>
           </div>
 
-{status && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
+          {status && <div className={`status-msg ${status.type}`}>{status.msg}</div>}
 
           <div className="form-actions">
-            <Link to="/browse" className="btn-cancel">Cancel</Link>
+            <Link to="/browse?tab=mine" className="btn-cancel">Cancel</Link>
             <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} disabled={loading || compressing}>
-              {loading ? 'Posting…' : 'Post Listing'}
+              {loading ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

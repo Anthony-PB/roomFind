@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authHeaders, getUser } from '../auth';
+import { apiFetch } from '../api';
 
 interface Preferences {
   sleepSchedule: string;
@@ -28,6 +29,8 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const user = getUser();
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
+  const [instagram, setInstagram] = useState('');
+  const [linkedin, setLinkedin] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
@@ -35,12 +38,14 @@ export default function ProfilePage() {
       navigate('/login');
       return;
     }
-    fetch('/api/users/me', { headers: authHeaders() })
+    apiFetch('/api/users/me', { headers: authHeaders() })
       .then(r => r.json())
-      .then((data: { user: { preferences?: Preferences } }) => {
+      .then((data: { user: { preferences?: Preferences; instagram?: string; linkedin?: string } }) => {
         if (data.user?.preferences && Object.keys(data.user.preferences).length > 0) {
           setPrefs(data.user.preferences);
         }
+        setInstagram(data.user?.instagram ?? '');
+        setLinkedin(data.user?.linkedin ?? '');
       })
       .catch(() => {/* keep defaults */});
   }, []);
@@ -54,10 +59,10 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaveStatus('saving');
     try {
-      const res = await fetch('/api/users/me', {
+      const res = await apiFetch('/api/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ preferences: prefs }),
+        body: JSON.stringify({ preferences: prefs, instagram, linkedin }),
       });
       if (res.ok) {
         setSaveStatus('saved');
@@ -155,6 +160,40 @@ export default function ProfilePage() {
               <option value="browsing">Browsing</option>
               <option value="found">Found Roommate</option>
             </select>
+          </div>
+        </div>
+
+        {/* Social Links */}
+        <div className="profile-section">
+          <h2>Social Links</h2>
+          <p style={{ fontSize: '0.82rem', color: '#4a5568', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Helps potential roommates verify who you are. Completely optional.
+          </p>
+          <div className="form-group">
+            <label>Instagram</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a0aec0', fontSize: '0.95rem', pointerEvents: 'none' }}>@</span>
+              <input
+                type="text"
+                placeholder="yourhandle"
+                value={instagram}
+                onChange={e => setInstagram(e.target.value.replace(/^@/, ''))}
+                style={{ paddingLeft: '1.75rem' }}
+              />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>LinkedIn</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a0aec0', fontSize: '0.85rem', pointerEvents: 'none', whiteSpace: 'nowrap' }}>in/</span>
+              <input
+                type="text"
+                placeholder="your-name"
+                value={linkedin}
+                onChange={e => setLinkedin(e.target.value)}
+                style={{ paddingLeft: '2rem' }}
+              />
+            </div>
           </div>
         </div>
 

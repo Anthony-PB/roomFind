@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getUser, authHeaders } from '../auth';
+import { apiFetch } from '../api';
 
 interface OtherUser {
   id: string;
   name: string;
   email: string;
+  instagram?: string;
+  linkedin?: string;
   preferences?: {
     sleepSchedule?: string;
     noiseLevel?: number;
@@ -63,8 +66,8 @@ export default function UserProfilePage() {
     if (id === me.id) { navigate('/profile'); return; }
 
     Promise.all([
-      fetch(`/api/users/${id}`, { headers: authHeaders() }).then(r => r.json()),
-      fetch(`/api/posts?sort=date`, { headers: authHeaders() }).then(r => r.json()),
+      apiFetch(`/api/users/${id}`, { headers: authHeaders() }).then(r => r.json()),
+      apiFetch(`/api/posts?sort=date`, { headers: authHeaders() }).then(r => r.json()),
     ])
       .then(([userData, postsData]) => {
         setProfile(userData.user ?? null);
@@ -82,7 +85,7 @@ export default function UserProfilePage() {
     if (!reqPostId) return;
     setReqStatus('sending');
     try {
-      const res = await fetch('/api/requests', {
+      const res = await apiFetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ toUserId: id, postId: reqPostId, message: reqMsg }),
@@ -109,6 +112,30 @@ export default function UserProfilePage() {
             <span className={`status-badge status-${prefs.status}`}>
               {STATUS_LABEL[prefs.status] ?? prefs.status}
             </span>
+          )}
+          {(profile.instagram || profile.linkedin) && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              {profile.instagram && (
+                <a
+                  href={`https://instagram.com/${profile.instagram}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link social-link--instagram"
+                >
+                  Instagram @{profile.instagram}
+                </a>
+              )}
+              {profile.linkedin && (
+                <a
+                  href={`https://linkedin.com/in/${profile.linkedin}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link social-link--linkedin"
+                >
+                  LinkedIn
+                </a>
+              )}
+            </div>
           )}
         </div>
         <div className="profile-hero-actions">
