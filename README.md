@@ -2,7 +2,7 @@
 
 A roommate-finding web application for Cornell students. Users create listings, set lifestyle preferences, get match scores against other listings, message potential roommates, and view available housing on an interactive map centered on Ithaca, NY.
 
-**Live app:** [https://your-app.vercel.app](https://your-app.vercel.app)
+**Live app:** [roomFind](https://room-find.vercel.app/)
 
 ---
 
