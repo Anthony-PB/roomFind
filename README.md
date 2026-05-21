@@ -8,7 +8,7 @@ A roommate-finding web application for Cornell students. Users create listings, 
 
 ## Features
 
-- **Match Scoring** — Server computes a 0–100 compatibility score per listing based on noise tolerance, cleanliness, and sleep schedule. Browse is sorted by score when logged in.
+- **Match Scoring** — Server computes a 0–100 compatibility score per listing based on noise tolerance, cleanliness, sleep schedule, and pet compatibility. Browse is sorted by score when logged in.
 - **Listings** — Post a room or sublet with budget, room type, move-in date, living style, and address autocomplete (Nominatim/OpenStreetMap).
 - **Filters, Sort & Search** — Filter by max budget, room type, and sublet; sort by match score, budget, or date; full-text search across titles and descriptions.
 - **Bookmarks** — Save listings to a personal "Saved" tab.
@@ -78,8 +78,9 @@ When a logged-in user with saved preferences fetches posts, each post receives a
 
 | Factor | Weight |
 |--------|--------|
-| Noise level similarity | 40 pts |
-| Cleanliness similarity | 40 pts |
-| Sleep schedule match | 20 pts |
+| Noise level similarity | 30 pts |
+| Cleanliness similarity | 25 pts |
+| Sleep schedule match | 25 pts |
+| Pet compatibility | 20 pts |
 
-Noise and cleanliness are rated 1–5; the score for each is `(1 − |diff| / 4) × weight`. Sleep schedule is exact match (20 pts), adjacent (10 pts), or opposite (0 pts). Posts are returned sorted by score descending.
+Posts are returned sorted by score descending when the user is logged in and has saved preferences.

@@ -15,22 +15,34 @@ type UserPrefs = {
 const SLEEP_IDX: Record<string, number> = { 'early-bird': 0, average: 1, 'night-owl': 2 };
 
 function computeMatchScore(prefs: UserPrefs, post: PostDoc): number {
+  // Noise compatibility (0–30 pts)
   const noiseDiff = Math.abs((prefs.noiseLevel ?? 3) - (post['noiseLevel'] as number ?? 3));
+  const noiseScore = (1 - noiseDiff / 4) * 30;
+
+  // Cleanliness compatibility (0–25 pts)
   const cleanDiff = Math.abs((prefs.cleanliness ?? 3) - (post['cleanLevel'] as number ?? 3));
+  const cleanScore = (1 - cleanDiff / 4) * 25;
 
-  const noiseScore = (1 - noiseDiff / 4) * 40;
-  const cleanScore = (1 - cleanDiff / 4) * 40;
-
-  // Sleep schedule (20 pts)
-  let sleepScore = 15; // neutral if not set
+  // Sleep schedule (0–25 pts): same=25, adjacent=15, opposite=0, neutral=18
+  let sleepScore = 18;
   const userSleep = SLEEP_IDX[prefs.sleepSchedule ?? ''];
   const postSleep = SLEEP_IDX[(post['sleepSchedule'] as string) ?? ''];
   if (userSleep !== undefined && postSleep !== undefined) {
     const diff = Math.abs(userSleep - postSleep);
-    sleepScore = diff === 0 ? 20 : diff === 1 ? 10 : 0;
+    sleepScore = diff === 0 ? 25 : diff === 1 ? 15 : 0;
   }
 
-  return Math.round(noiseScore + cleanScore + sleepScore);
+  // Pets compatibility (0–20 pts)
+  const userPets = prefs.pets ?? '';
+  const postPets = (post['pets'] as string) ?? '';
+  let petsScore = 12; // neutral if unspecified
+  if (userPets && postPets) {
+    if (userPets === 'ok' || postPets === 'ok') petsScore = 14;   // at least one side is flexible
+    else if (userPets === postPets) petsScore = 20;                // both 'no' or both 'have'
+    else petsScore = 0;                                            // 'no' vs 'have' = incompatible
+  }
+
+  return Math.round(noiseScore + cleanScore + sleepScore + petsScore);
 }
 
 const router = Router();
